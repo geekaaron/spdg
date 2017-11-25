@@ -1,4 +1,12 @@
 
+/*
+ * program 	- spdg
+ * author	- aaron
+ * date		- 2017/11/25
+ * description	- generate all the passwords 
+ * 		- that are composed of specify string
+ */
+
 #define _GNU_SOURCE
 #include <getopt.h>
 #include <malloc.h>
@@ -175,6 +183,9 @@ GET_HELP:
 	exit (EXIT_FAILURE);
 }
 
+/*
+ * usage - Print help massage
+ */
 void usage ()
 {
 	printf ("Usage: spdg <min> <max> <option[s]>\n");
@@ -186,6 +197,9 @@ void usage ()
 	printf ("\t-h, --help		- display this help message\n");
 }
 
+/*
+ * is_digit - determine if it is a number
+ */
 int is_digit (char *str)
 {
 	int i = 0;
@@ -201,6 +215,9 @@ int is_digit (char *str)
 	return 1;
 }
 
+/*
+ * set_passwd_str - set the string to generate passwords
+ */
 void set_passwd_str (char **passwd_str, const char *str)
 {
 	if (*passwd_str == NULL)
@@ -218,6 +235,9 @@ void set_passwd_str (char **passwd_str, const char *str)
 	}
 }
 
+/*
+ * spawn_passwd - generate passwords
+ */
 void spawn_passwd (int pos, int passwd_len)
 {
 	int i = 0;
