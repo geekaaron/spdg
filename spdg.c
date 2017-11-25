@@ -34,10 +34,10 @@
 						exit (EXIT_FAILURE);\
 					}
 
-static const char *lower 	= 	"abcdefghijklmnopqrstuvwxyz";
-static const char *upper 	= 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static const char *digit 	= 	"0123456789";
-static const char *symbol 	=	 "+-*/\\=@#$%^&?'\"`~()[]{}:;,.";
+static char *cosnt lower 	= 	"abcdefghijklmnopqrstuvwxyz";
+static char *const upper 	= 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static char *const digit 	= 	"0123456789";
+static char *const symbol 	=	 "+-*/\\=@#$%^&?'\"`~()[]{}:;,.";
 
 static char *passwd_str 	= 	NULL;
 static char *passwd		= 	NULL;
@@ -57,7 +57,7 @@ static const struct option long_opts[] =
 void usage ();
 int is_digit (char *str);
 void set_passwd_size (char **passwd, int size);
-void set_passwd_str (char **passwd_str, const char *str);
+void set_passwd_str (char **passwd_str, char *const str);
 void spawn_passwd (int pos, int passwd_len);
 
 int main (int argc, char *argv[])
@@ -229,7 +229,7 @@ void set_passwd_size (char **passwd, int size)
 /*
  * set_passwd_str - set the string to generate passwords
  */
-void set_passwd_str (char **passwd_str, const char *str)
+void set_passwd_str (char **passwd_str, char *const str)
 {
 	if (*passwd_str == NULL)
 	{
