@@ -44,10 +44,10 @@ static char *passwd		= 	NULL;
 
 static const struct option long_opts[] = 
 {
-	{"digits", 0, NULL, 'd'},
-	{"lowers", 0, NULL, 'z'},
-	{"uppers", 0, NULL, 'Z'},
-	{"symbols", 0, NULL, 's'},
+	{"digit", 0, NULL, 'd'},
+	{"lower", 0, NULL, 'z'},
+	{"upper", 0, NULL, 'Z'},
+	{"symbol", 0, NULL, 's'},
 	{"specify", 1, NULL, 'S'},
 	{"output", 1, NULL, 'o'},
 	{"help", 0, NULL, 'h'},
