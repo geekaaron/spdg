@@ -28,8 +28,6 @@
 #define STR_SPECIFY			(1<<4)
 #define FILE_OUTPUT			(1<<5)
 
-#define PW_MAX				256
-
 #define CKALLOC(mem_ptr)		if (!mem_ptr)\
 					{\
 						perror ("Error");\
@@ -42,7 +40,7 @@ static const char *digit 	= 	"0123456789";
 static const char *symbol 	=	 "+-*/\\=@#$%^&?'\"`~()[]{}:;,.";
 
 static char *passwd_str 	= 	NULL;
-static char passwd[PW_MAX];
+static char *passwd		= 	NULL;
 
 static const struct option long_opts[] = 
 {
@@ -58,6 +56,7 @@ static const struct option long_opts[] =
 
 void usage ();
 int is_digit (char *str);
+void set_passwd_size (char **passwd, int size);
 void set_passwd_str (char **passwd_str, const char *str);
 void spawn_passwd (int pos, int passwd_len);
 
@@ -95,6 +94,8 @@ int main (int argc, char *argv[])
 		fprintf (stderr, "Argument 1 must bigger than argument 2\n");
 		goto GET_HELP;
 	}
+	
+	set_passwd_size (&passwd, passwd_len_max);
 
 	while ((opt = getopt_long 
 		(argc, argv, ":dzZsS:o:h", long_opts, NULL)) != -1)
@@ -174,6 +175,7 @@ int main (int argc, char *argv[])
 		spawn_passwd (0, len);
 	}
 
+	free (passwd);
 	free (passwd_str);
 
 	return 0;
@@ -213,6 +215,15 @@ int is_digit (char *str)
 	}
 
 	return 1;
+}
+
+/*
+ * set_passwd_size - set the size of passwd[]
+ */
+void set_passwd_size (char **passwd, int size)
+{
+	*passwd = (char *)malloc (size + 1);
+	CKALLOC (*passwd);
 }
 
 /*
