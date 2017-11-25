@@ -34,7 +34,7 @@
 						exit (EXIT_FAILURE);\
 					}
 
-static char *cosnt lower 	= 	"abcdefghijklmnopqrstuvwxyz";
+static char *const lower 	= 	"abcdefghijklmnopqrstuvwxyz";
 static char *const upper 	= 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char *const digit 	= 	"0123456789";
 static char *const symbol 	=	 "+-*/\\=@#$%^&?'\"`~()[]{}:;,.";
