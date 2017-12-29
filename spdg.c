@@ -28,10 +28,10 @@
 #define STR_SPECIFY			(1<<4)
 #define FILE_OUTPUT			(1<<5)
 
-#define CKALLOC(mem_ptr)			if (!mem_ptr)\
-					{\
-						perror ("Error");\
-						exit (EXIT_FAILURE);\
+#define CKALLOC(mem_ptr)		if (!mem_ptr)			\
+					{				\
+						perror ("Error");	\
+						exit (EXIT_FAILURE);	\
 					}
 
 static char *const lower 	= 	"abcdefghijklmnopqrstuvwxyz";
