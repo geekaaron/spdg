@@ -5,6 +5,9 @@
  * date		- 2017/11/25
  * description	- generate all the passwords 
  * 		- that are composed of specify string
+ *
+ * update	- 2019/9/25
+ *	hsociety() - generate password based on informations
  */
 
 #define _GNU_SOURCE
@@ -21,12 +24,16 @@
 #define EXIT_SUCCESS			0
 #endif
 
+#define LIMIT_INFO			64
+
 #define STR_DIGIT			(1<<0)
 #define STR_LOWER			(1<<1)
 #define STR_UPPER			(1<<2)
 #define STR_SYMBOL			(1<<3)
 #define STR_SPECIFY			(1<<4)
-#define FILE_OUTPUT			(1<<5)
+#define STR_INFOS			(1<<5)
+#define FILE_OUTPUT			(1<<6)
+#define REPEAT				(1<<7)
 
 #define CKALLOC(mem_ptr)		if (!mem_ptr)			\
 					{				\
@@ -41,65 +48,77 @@ static char *const symbol 	=	 "+-*/\\=@#$%^&?'\"`~()[]{}:;,.";
 
 static char *passwd_str 	= 	NULL;
 static char *passwd		= 	NULL;
+static char *gotyou[LIMIT_INFO];
+static char **infos;
 
-static const struct option long_opts[] = 
+static const struct option opts[] =
 {
-	{"digit", 0, NULL, 'd'},
-	{"lower", 0, NULL, 'z'},
-	{"upper", 0, NULL, 'Z'},
-	{"symbol", 0, NULL, 's'},
-	{"specify", 1, NULL, 'S'},
-	{"output", 1, NULL, 'o'},
-	{"help", 0, NULL, 'h'},
-	{NULL, 0, NULL, 0}
+	{ "digit", 0, NULL, 'd' },
+	{ "lower", 0, NULL, 'z' },
+	{ "upper", 0, NULL, 'Z' },
+	{ "symbol", 0, NULL, 's' },
+	{ "specify", 1, NULL, 'S' },
+	{ "infos", 0, NULL, 'i' },
+	{ "repeat", 0, NULL, 'r' },
+	{ "output", 1, NULL, 'o' },
+	{ "help", 0, NULL, 'h' },
+	{ NULL, 0, NULL, 0 }
 };
 
-void usage ();
-int is_digit (char *str);
-void set_passwd_size (char **passwd, int size);
-void set_passwd_str (char **passwd_str, char *const str);
-void spawn_passwd (int pos, int passwd_len);
+void usage();
+void set_passwd_size(char **passwd, int size);
+void set_passwd_str(char **passwd_str, char *const str);
+void spawn_passwd(int cur, int len, int repeat);
+void hsociety(int cur, int len, int repeat);
+
+int is_digit(char *str);
+int is_repeat_char(char *str, char target, int n);
+int is_repeat_str(char *gotyou[], char *target, int n);
 
 int main (int argc, char *argv[])
 {
 	char *specify, *file_name;
-	int passwd_len_min, passwd_len_max;
+	int min, max, opt, info_flag = 0;
 	unsigned int flags = 0;
-	int len, opt;
 	
-	if (argc == 2 && 
-		(!strcmp (argv[1], "-h") || !strcmp (argv[1], "--help")))
+	if (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
 	{
-		usage ();
-		exit (EXIT_SUCCESS);
+		usage();
+		exit(EXIT_SUCCESS);
 	}
 
 	if (argc < 4)
 	{
-		fprintf (stderr, "Too few option or argument\n");
+		fprintf(stderr, "Too few option or argument\n");
 		goto GET_HELP;
 	}
 
-	if ((!is_digit (argv[1]) || !is_digit (argv[2])))
+	if (!strcmp(argv[3], "-i") || !strcmp(argv[3], "--infos"))
+		info_flag = 1;
+
+	if (!is_digit(argv[1]) || !is_digit(argv[2]))
 	{
-		fprintf (stderr, "Argument 1 and 2 must be a number\n");
+		fprintf(stderr, "Argument 1 and 2 must be a number\n");
 		goto GET_HELP;
 	}
 
-	sscanf (argv[1], "%d", &passwd_len_min);
-	sscanf (argv[2], "%d", &passwd_len_max);
+	sscanf(argv[1], "%d", &min);
+	sscanf(argv[2], "%d", &max);
 
-	if (passwd_len_min > passwd_len_max)
+	if (min > max)
 	{
-		fprintf (stderr, "Argument 1 must bigger than argument 2\n");
+		fprintf(stderr, "Argument 1 must bigger than argument 2\n");
 		goto GET_HELP;
-	}
-	
-	set_passwd_size (&passwd, passwd_len_max);
+	}	
 
-	while ((opt = getopt_long 
-		(argc, argv, ":dzZsS:o:h", long_opts, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, ":dzZsS:iro:h", opts, NULL)) != -1)
 	{
+		if (info_flag && opt != 'i')
+		{
+			fprintf(stderr, "Option -i can only be used alone\n");
+			goto GET_HELP;
+		}
+
 		switch (opt)
 		{
 		case 'd':
@@ -118,12 +137,18 @@ int main (int argc, char *argv[])
 			flags |= STR_SPECIFY;
 			specify = optarg;
 			break;
+		case 'i':
+			flags |= STR_INFOS;
+			break;
+		case 'r':
+			flags |= REPEAT;
+			break;
 		case 'o':
 			flags |= FILE_OUTPUT;
 			file_name = optarg;
 			break;
 		case 'h':
-			fprintf (stderr, "Option %c must use alone\n", opt);
+			fprintf (stderr, "Option %c can only be used alone\n", opt);
 			goto GET_HELP;
 		case '?':
 			fprintf (stderr, "Unknown option: %c\n", optopt);
@@ -134,50 +159,38 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	if (argc - optind > 2)
+	if ((flags & FILE_OUTPUT) && !freopen(file_name, "w", stdout))
 	{
-		fprintf (stderr, "Program has extra argument\n");
-		goto GET_HELP;
+		fprintf (stderr, "Open file %s failed\n", file_name);
+		exit (EXIT_FAILURE);
 	}
 
-	if (flags & FILE_OUTPUT)
+	if (flags & STR_INFOS)
 	{
-		if (!freopen (file_name, "w", stdout))
+		if (!(infos = &argv[optind+2]))
 		{
-			fprintf (stderr, "Open file %s failed\n", file_name);
-			exit (EXIT_FAILURE);
+			fprintf(stderr, "There is no more informations\n");
+			goto GET_HELP;
 		}
+		for (int i = min; i <= max; i++) hsociety(0, i, flags & REPEAT);
+
+		goto DONE;
 	}
 
-	if (flags & STR_DIGIT)
-	{
-		set_passwd_str (&passwd_str, digit);
-	}
-	if (flags & STR_LOWER)
-	{
-		set_passwd_str (&passwd_str, lower);
-	}
-	if (flags & STR_UPPER)
-	{
-		set_passwd_str (&passwd_str, upper);
-	}
-	if (flags & STR_SYMBOL)
-	{
-		set_passwd_str (&passwd_str, symbol);
-	}
-	if (flags & STR_SPECIFY)
-	{
-		set_passwd_str (&passwd_str, specify);
-	}
+	set_passwd_size(&passwd, max);
 
-	for (len = passwd_len_min; len <= passwd_len_max; len++)
-	{
-		spawn_passwd (0, len);
-	}
+	if (flags & STR_DIGIT) set_passwd_str(&passwd_str, digit);
+	if (flags & STR_LOWER) set_passwd_str(&passwd_str, lower);
+	if (flags & STR_UPPER) set_passwd_str(&passwd_str, upper);
+	if (flags & STR_SYMBOL) set_passwd_str(&passwd_str, symbol);
+	if (flags & STR_SPECIFY) set_passwd_str(&passwd_str, specify);
+
+	for (int i = min; i <= max; i++) spawn_passwd (0, i, flags & REPEAT);
 
 	free (passwd);
 	free (passwd_str);
 
+DONE:
 	return 0;
 
 GET_HELP:
@@ -185,84 +198,99 @@ GET_HELP:
 	exit (EXIT_FAILURE);
 }
 
-/*
- * usage - Print help massage
- */
-void usage ()
+void usage()
 {
-	printf ("Usage: spdg <min> <max> <option[s]>\n");
-	printf ("\t-d, --digit		- 0 - 9\n");
-	printf ("\t-z, --lower		- a - z\n");
-	printf ("\t-Z, --upper		- A - Z\n");
-	printf ("\t-s, --symbol		- +-*/\\=@#$%^&?'\"`~()[]{}:;,.\n");
-	printf ("\t-S, --specify str	- the str is user input\n");
-	printf ("\t-h, --help		- display this help message\n");
+	printf("Usage: spdg <min> <max> <option[s]>\n");
+	printf("\t-d, --digit			- 0 - 9\n");
+	printf("\t-z, --lower			- a - z\n");
+	printf("\t-Z, --upper			- A - Z\n");
+	printf("\t-s, --symbol			- +-*/\\=@#$%^&?'\"`~()[]{}:;,.\n");
+	printf("\t-S, --specify charset		- Use specified charset\n");
+	printf("\t-i, --infos str1, str2...	- Generate password based on informations\n");
+	printf("\t-h, --help			- Show help message\n");
 }
 
-/*
- * is_digit - determine if it is a number
- */
-int is_digit (char *str)
+int is_digit(char *str)
 {
-	int i = 0;
-
-	while (str[i])
-	{
-		if (str[i] > '9' || str[i++] < '0')
-		{
+	for (int i = 0; str[i] != '\0'; i++)
+		if (str[i] > '9' || str[i] < '0')
 			return 0;
-		}
-	}
-
 	return 1;
 }
 
-/*
- * set_passwd_size - set the size of passwd[]
- */
 void set_passwd_size (char **passwd, int size)
 {
-	*passwd = (char *)malloc (size + 1);
-	CKALLOC (*passwd);
+	*passwd = (char *)malloc(size + 1);
+	CKALLOC(*passwd);
 }
 
-/*
- * set_passwd_str - set the string to generate passwords
- */
-void set_passwd_str (char **passwd_str, char *const str)
+/* Set the charset */
+void set_passwd_str(char **passwd_str, char *const str)
 {
 	if (*passwd_str == NULL)
 	{
-		*passwd_str = (char *)malloc (strlen (str) + 1);
-		CKALLOC (*passwd_str);
-		strcpy (*passwd_str, str);
+		*passwd_str = (char *)malloc(strlen (str) + 1);
+		CKALLOC(*passwd_str);
+		strcpy(*passwd_str, str);
 	}
 	else
 	{
-		*passwd_str = (char *)realloc (*passwd_str, 
-			strlen (*passwd_str) + strlen (str) + 1);
-		CKALLOC (*passwd_str);
-		strcat (*passwd_str, str);
+		*passwd_str = (char *)realloc(*passwd_str, 
+			strlen(*passwd_str) + strlen(str) + 1);
+		CKALLOC(*passwd_str);
+		strcat(*passwd_str, str);
 	}
 }
 
-/*
- * spawn_passwd - generate passwords
- */
-void spawn_passwd (int pos, int passwd_len)
+int is_repeat_char(char *str, char target, int n)
 {
-	int i = 0;
+	for (int i = 0; i < n; i++)
+		if (str[i] == target) return 1;
+	return 0;
+}
 
-	if (passwd_len == 0)
+/* Generate password based on charset */
+void spawn_passwd (int cur, int len, int repeat)
+{
+	if (cur == len)
 	{
-		passwd[pos] = '\0';
-		printf ("%s\n", passwd);
-		return ;
+		passwd[cur] = '\0';
+		printf("%s\n", passwd);
+		return;
 	}
 
-	while (passwd_str[i])
+	for (int i = 0; passwd_str[i] != '\0'; i++)
 	{
-		passwd[pos] = passwd_str[i++];
-		spawn_passwd (pos + 1, passwd_len - 1);
+		if (!repeat && is_repeat_char(passwd, passwd_str[i], cur))
+			continue;
+		passwd[cur] = passwd_str[i];
+		spawn_passwd(cur + 1, len, repeat);
+	}
+}
+
+int is_repeat_str(char *gotyou[], char *target, int n)
+{
+	for (int i = 0; i < n; i++)
+		if (gotyou[i] == target) return 1;
+	return 0;
+}
+
+/* Generate password based on informations */
+void hsociety(int cur, int len, int repeat)
+{
+	if (cur == len)
+	{
+		for (int i = 0; i < len; i++)
+			printf("%s", gotyou[i]);
+		printf("\n");
+		return;
+	}
+
+	for (int i = 0; infos[i] != NULL; i++)
+	{
+		if (!repeat && is_repeat_str(gotyou, infos[i], cur))
+			continue;
+		gotyou[cur] = infos[i];
+		hsociety(cur + 1, len, repeat);
 	}
 }
